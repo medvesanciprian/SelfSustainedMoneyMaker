@@ -16,6 +16,12 @@ def _validate_track(name: str, cfg: dict):
     if missing:
         raise ValueError(f"[{name}] missing required config key(s): {missing}")
 
+    # imported lazily to avoid engine.config <-> engine.runner import ordering issues
+    from engine.runner import STRATEGIES
+
+    if cfg["strategy"] not in STRATEGIES:
+        raise ValueError(f"[{name}] unknown strategy {cfg['strategy']!r}, must be one of {sorted(STRATEGIES)}")
+
     if cfg["starting_capital"] <= 0:
         raise ValueError(f"[{name}] starting_capital must be positive, got {cfg['starting_capital']}")
     if cfg["fee_pct"] < 0:
