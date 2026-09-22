@@ -1,0 +1,40 @@
+"""Loads and validates config/tracks.yaml. Shared by scheduler.py and
+scoreboard.py so both fail loudly on a bad config instead of one of them
+silently producing wrong numbers."""
+
+from pathlib import Path
+
+import yaml
+
+CONFIG_PATH = Path(__file__).resolve().parent.parent / "config" / "tracks.yaml"
+
+REQUIRED_KEYS = ("starting_capital", "fee_pct", "slippage_pct", "loss_cap_pct", "poll_minutes", "strategy")
+
+
+def _validate_track(name: str, cfg: dict):
+    missing = [k for k in REQUIRED_KEYS if k not in cfg]
+    if missing:
+        raise ValueError(f"[{name}] missing required config key(s): {missing}")
+
+    if cfg["starting_capital"] <= 0:
+        raise ValueError(f"[{name}] starting_capital must be positive, got {cfg['starting_capital']}")
+    if cfg["fee_pct"] < 0:
+        raise ValueError(f"[{name}] fee_pct must be >= 0, got {cfg['fee_pct']}")
+    if cfg["slippage_pct"] < 0:
+        raise ValueError(f"[{name}] slippage_pct must be >= 0, got {cfg['slippage_pct']}")
+    if not (0 < cfg["loss_cap_pct"] <= 100):
+        raise ValueError(f"[{name}] loss_cap_pct must be in (0, 100], got {cfg['loss_cap_pct']}")
+    if cfg["poll_minutes"] <= 0:
+        raise ValueError(f"[{name}] poll_minutes must be positive, got {cfg['poll_minutes']}")
+
+
+def load_tracks_config(path: Path = CONFIG_PATH) -> dict:
+    data = yaml.safe_load(path.read_text())
+    tracks = data.get("tracks") if data else None
+    if not tracks:
+        raise ValueError(f"{path} has no 'tracks' section")
+
+    for name, cfg in tracks.items():
+        _validate_track(name, cfg)
+
+    return tracks

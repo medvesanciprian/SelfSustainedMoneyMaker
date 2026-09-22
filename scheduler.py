@@ -15,12 +15,10 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-import yaml
-
+from engine.config import load_tracks_config
 from tracks import crypto_mean_reversion, crypto_momentum, prediction_markets_momentum, stocks_momentum
 
 LOG_DIR = Path(__file__).resolve().parent / "logs"
-CONFIG_PATH = Path(__file__).resolve().parent / "config" / "tracks.yaml"
 
 TRACK_MODULES = {
     "crypto_momentum": crypto_momentum,
@@ -40,10 +38,6 @@ def setup_logging():
             logging.StreamHandler(),
         ],
     )
-
-
-def load_config():
-    return yaml.safe_load(CONFIG_PATH.read_text())["tracks"]
 
 
 def run_all_once(config: dict, logger: logging.Logger):
@@ -72,12 +66,12 @@ def main():
     logger = logging.getLogger("scheduler")
 
     if args.once:
-        run_all_once(load_config(), logger)
+        run_all_once(load_tracks_config(), logger)
         return
 
     interval = args.interval_minutes
     while True:
-        config = load_config()
+        config = load_tracks_config()
         run_all_once(config, logger)
         if interval is None:
             sleep_minutes = min(c["poll_minutes"] for c in config.values())

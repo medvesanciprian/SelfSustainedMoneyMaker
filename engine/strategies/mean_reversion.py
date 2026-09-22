@@ -18,6 +18,16 @@ def _rsi(series: list, period: int) -> float:
 
 
 class MeanReversionStrategy(Strategy):
+    def __init__(self, **params):
+        super().__init__(**params)
+        period = self.params.get("rsi_period", 14)
+        oversold = self.params.get("oversold", 30)
+        overbought = self.params.get("overbought", 70)
+        if period <= 0:
+            raise ValueError(f"rsi_period must be positive, got {period}")
+        if not (0 <= oversold < overbought <= 100):
+            raise ValueError(f"require 0 <= oversold < overbought <= 100, got oversold={oversold} overbought={overbought}")
+
     def decide(self, series: list, holding_position: bool) -> Signal:
         period = self.params.get("rsi_period", 14)
         oversold = self.params.get("oversold", 30)

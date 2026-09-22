@@ -7,11 +7,10 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import yaml
 
+from engine.config import load_tracks_config
 from engine.ledger import Ledger
 
-CONFIG_PATH = Path(__file__).resolve().parent / "config" / "tracks.yaml"
 LOG_DIR = Path(__file__).resolve().parent / "logs"
 
 
@@ -44,7 +43,7 @@ def win_rate(trades: list) -> float:
 
 
 def main():
-    config = yaml.safe_load(CONFIG_PATH.read_text())["tracks"]
+    config = load_tracks_config()
     rows = []
     plt.figure(figsize=(10, 6))
 
