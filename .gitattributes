@@ -1,0 +1,5 @@
+# SQLite ledgers must never go through text/line-ending conversion -- that
+# would corrupt them. Git's heuristic already detects them as binary today,
+# but that's implicit; this makes it explicit and permanent. `binary` is
+# git's built-in macro for -diff -merge -text.
+*.db binary
