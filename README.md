@@ -23,15 +23,26 @@ per-track SQLite ledger in `data_store/`.
 
 ## Running it
 
+**In production:** [.github/workflows/tick.yml](.github/workflows/tick.yml) runs `python scheduler.py --once`
+on a schedule (every 15 min) via GitHub Actions, then commits the updated
+SQLite ledgers back to this repo. This is deliberate: it needs no machine of
+ours to stay on, and public-repo Actions minutes are free. Trigger a tick
+manually with `gh workflow run tick.yml` or from the Actions tab.
+
+**Known issue:** GitHub's `schedule` cron trigger has been unreliable about
+firing on its own after this workflow's creation (confirmed via
+`actions/runs?event=schedule` repeatedly returning 0, even hours in). Manual
+`gh workflow run tick.yml` always works fine — it's specifically the
+automatic cron firing that's been flaky. If ticks look sparse, check whether
+the schedule has started firing yet before assuming something's broken in the code.
+
+**Locally** (for development/testing, not how it runs in production):
+
 ```bash
 pip install -r requirements.txt
 
-# One tick of all four tracks (recommended: schedule this every 15 min via
-# Windows Task Scheduler, cron, etc. — more robust than a long-lived process)
-python scheduler.py --once
-
-# Or run continuously, sleeping between ticks:
-python scheduler.py --loop
+python scheduler.py --once   # one tick of all four tracks
+python scheduler.py --loop   # or run continuously, sleeping between ticks
 ```
 
 After a few ticks have accumulated:
@@ -48,6 +59,12 @@ writes `logs/equity_curve.png` with all four equity curves overlaid.
 `config/tracks.yaml` holds per-track symbol, fee/slippage assumptions, poll
 interval, and the loss-cap threshold. Nothing here should be edited to make a
 track "look better" — the point is an honest comparison.
+
+Note: `starting_capital` only seeds a track the *first* time it's created —
+once a track's ledger exists, its starting capital is locked in and read from
+the ledger itself, not re-read from this file. Editing it later has no effect
+on an already-running track (by design, so the loss-cap floor and return%
+math can't silently drift out from under a live track).
 
 ## What's deliberately not here yet
 
