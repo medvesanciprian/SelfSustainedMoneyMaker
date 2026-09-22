@@ -65,6 +65,8 @@ def fetch_series(track_name: str, condition_id: str = None, history_len: int = 6
     prices = market.get("outcomePrices")
     if isinstance(prices, str):
         prices = json.loads(prices)
+    if not prices:
+        raise RuntimeError(f"Market {condition_id} has no outcomePrices in API response")
     last_price = float(prices[0])
 
     path = _history_path(track_name)

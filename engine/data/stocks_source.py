@@ -21,7 +21,7 @@ def market_is_open(now=None) -> bool:
 def fetch_series(symbol: str, period: str = "5d", interval: str = "15m"):
     """Returns a list of closing prices, oldest first, and the last price."""
     hist = yf.Ticker(symbol).history(period=period, interval=interval)
-    closes = hist["Close"].tolist()
+    closes = hist["Close"].dropna().tolist()
     if not closes:
         raise RuntimeError(f"No price data returned for {symbol}")
     return closes, closes[-1]
