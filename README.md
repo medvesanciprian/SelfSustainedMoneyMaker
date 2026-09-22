@@ -1,4 +1,6 @@
 # Self-Sustained Money Maker — paper-trading comparison engine
+<!-- race-test marker, safe to remove -->
+
 
 **Status: validation phase.** This is a paper-trading (simulated money) comparison
 engine. No exchange or broker accounts, no API keys, no real capital involved yet.
