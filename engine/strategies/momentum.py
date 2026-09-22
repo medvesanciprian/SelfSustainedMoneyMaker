@@ -10,8 +10,15 @@ def _sma(series: list, window: int) -> float:
 
 
 class MomentumStrategy(Strategy):
+    ALLOWED_PARAMS = {"fast_window", "slow_window"}
+
     def __init__(self, **params):
         super().__init__(**params)
+        unexpected = set(self.params) - self.ALLOWED_PARAMS
+        if unexpected:
+            # a typo'd key (e.g. "fastwindow") would otherwise be silently ignored
+            # and the corresponding default quietly used instead.
+            raise ValueError(f"unexpected strategy_params for momentum: {sorted(unexpected)}")
         fast_window = self.params.get("fast_window", 5)
         slow_window = self.params.get("slow_window", 20)
         if fast_window <= 0 or slow_window <= 0:

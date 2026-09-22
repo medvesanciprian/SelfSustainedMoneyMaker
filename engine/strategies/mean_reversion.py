@@ -18,8 +18,13 @@ def _rsi(series: list, period: int) -> float:
 
 
 class MeanReversionStrategy(Strategy):
+    ALLOWED_PARAMS = {"rsi_period", "oversold", "overbought"}
+
     def __init__(self, **params):
         super().__init__(**params)
+        unexpected = set(self.params) - self.ALLOWED_PARAMS
+        if unexpected:
+            raise ValueError(f"unexpected strategy_params for mean_reversion: {sorted(unexpected)}")
         period = self.params.get("rsi_period", 14)
         oversold = self.params.get("oversold", 30)
         overbought = self.params.get("overbought", 70)
