@@ -84,7 +84,8 @@ def main():
             wr_str = "--" if wr != wr else f"{wr:.1f}"  # NaN check
             print(f"{name:<32}{start:>8.2f}{current:>10.4f}{ret:>+9.2f}%{n_trades:>8}{dd:>8.2f}%{wr_str:>8}")
 
-    plt.axhline(y=config[next(iter(config))]["starting_capital"], color="gray", linestyle="--", linewidth=0.8, label="starting capital")
+    if rows:
+        plt.axhline(y=rows[0][1], color="gray", linestyle="--", linewidth=0.8, label="starting capital")
     plt.xlabel("tick #")
     plt.ylabel("equity ($)")
     plt.title("Paper-trading track comparison")
