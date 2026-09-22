@@ -16,7 +16,6 @@ import requests
 
 GAMMA_MARKETS_URL = "https://gamma-api.polymarket.com/markets"
 HISTORY_DIR = Path(__file__).resolve().parent.parent.parent / "data_store"
-MAX_HISTORY = 200
 
 
 def pick_active_market() -> str:
