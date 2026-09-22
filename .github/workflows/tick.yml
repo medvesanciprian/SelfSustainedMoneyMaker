@@ -41,16 +41,26 @@ jobs:
           fi
           git commit -m "tick: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
 
-          # main may have moved since checkout (e.g. a manual push landed while
-          # this run was installing deps / fetching data) -- retry with rebase
-          # instead of letting the whole tick's data get dropped on a bare push failure.
+          # main may have moved since checkout -- e.g. a manual push landed while
+          # this run was installing deps, or (observed in practice) a scheduled and
+          # a manually-triggered run overlapped despite the concurrency group.
+          # A non-conflicting divergence (code-only commit) rebases cleanly and we
+          # retry the push. A conflicting one (two runs both touched the same
+          # binary SQLite ledger) can't be meaningfully 3-way-merged -- rather than
+          # fail the job, abort the rebase and drop this run's tick. Losing one
+          # periodic price sample is fine; leaving main in a broken state is not.
           for attempt in 1 2 3 4 5; do
             if git push; then
               exit 0
             fi
             echo "push rejected (attempt $attempt), fetching and rebasing"
             git fetch origin main
-            git rebase origin/main
+            if git rebase origin/main; then
+              continue
+            fi
+            echo "rebase hit a conflict (concurrent tick likely touched the same ledger) -- aborting and dropping this run's tick"
+            git rebase --abort
+            exit 0
           done
           echo "push failed after 5 attempts" >&2
           exit 1
