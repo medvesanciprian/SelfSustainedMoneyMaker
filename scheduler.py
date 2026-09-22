@@ -1,9 +1,11 @@
 """Runs all configured tracks. Each track's errors are isolated so one failing
 data source doesn't take down the others.
 
+In production this is driven by .github/workflows/tick.yml on a schedule.
+--once and --loop below are for local development/testing.
+
 Usage:
-    python scheduler.py --once      # single tick of all tracks (recommended: drive with
-                                     # Windows Task Scheduler / cron every N minutes)
+    python scheduler.py --once      # single tick of all tracks
     python scheduler.py --loop      # long-lived process, sleeps between ticks per-track
 """
 
