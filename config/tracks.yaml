@@ -1,0 +1,58 @@
+# Per-track configuration for the paper-trading comparison engine.
+# All tracks start from the same simulated capital so results are comparable.
+
+tracks:
+  crypto_momentum:
+    domain: crypto
+    symbol: BTC/USD
+    exchange: kraken
+    strategy: momentum
+    strategy_params:
+      fast_window: 5
+      slow_window: 20
+    starting_capital: 10.0
+    fee_pct: 0.26        # Kraken taker fee
+    slippage_pct: 0.05
+    poll_minutes: 15
+    loss_cap_pct: 50      # flatten + stop if equity falls below this % of start
+
+  crypto_mean_reversion:
+    domain: crypto
+    symbol: ETH/USD
+    exchange: kraken
+    strategy: mean_reversion
+    strategy_params:
+      rsi_period: 14
+      oversold: 30
+      overbought: 70
+    starting_capital: 10.0
+    fee_pct: 0.26
+    slippage_pct: 0.05
+    poll_minutes: 15
+    loss_cap_pct: 50
+
+  stocks_momentum:
+    domain: stocks
+    symbol: SPY
+    strategy: momentum
+    strategy_params:
+      fast_window: 5
+      slow_window: 20
+    starting_capital: 10.0
+    fee_pct: 0.0           # modern brokers are commission-free; modeled for realism later
+    slippage_pct: 0.02
+    poll_minutes: 15
+    loss_cap_pct: 50
+
+  prediction_markets_momentum:
+    domain: prediction_markets
+    symbol: null            # resolved at runtime: highest-volume active Polymarket market
+    strategy: momentum
+    strategy_params:
+      fast_window: 5
+      slow_window: 20
+    starting_capital: 10.0
+    fee_pct: 2.0             # Polymarket taker-side spread/fee approximation
+    slippage_pct: 0.5
+    poll_minutes: 15
+    loss_cap_pct: 50

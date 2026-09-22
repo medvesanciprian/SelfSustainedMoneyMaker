@@ -1,0 +1,6 @@
+ccxt>=4.3.0
+yfinance>=0.2.40
+requests>=2.31.0
+pyyaml>=6.0
+pandas>=2.2.0
+matplotlib>=3.8.0

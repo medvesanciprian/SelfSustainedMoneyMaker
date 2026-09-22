@@ -1,0 +1,89 @@
+"""Runs all configured tracks. Each track's errors are isolated so one failing
+data source doesn't take down the others.
+
+Usage:
+    python scheduler.py --once      # single tick of all tracks (recommended: drive with
+                                     # Windows Task Scheduler / cron every N minutes)
+    python scheduler.py --loop      # long-lived process, sleeps between ticks per-track
+"""
+
+import argparse
+import logging
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+
+import yaml
+
+from tracks import crypto_mean_reversion, crypto_momentum, prediction_markets_momentum, stocks_momentum
+
+LOG_DIR = Path(__file__).resolve().parent / "logs"
+CONFIG_PATH = Path(__file__).resolve().parent / "config" / "tracks.yaml"
+
+TRACK_MODULES = {
+    "crypto_momentum": crypto_momentum,
+    "crypto_mean_reversion": crypto_mean_reversion,
+    "stocks_momentum": stocks_momentum,
+    "prediction_markets_momentum": prediction_markets_momentum,
+}
+
+
+def setup_logging():
+    LOG_DIR.mkdir(exist_ok=True)
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(message)s",
+        handlers=[
+            logging.FileHandler(LOG_DIR / "scheduler.log"),
+            logging.StreamHandler(),
+        ],
+    )
+
+
+def load_config():
+    return yaml.safe_load(CONFIG_PATH.read_text())["tracks"]
+
+
+def run_all_once(config: dict, logger: logging.Logger):
+    logger.info("=== tick start %s ===", datetime.now(timezone.utc).isoformat())
+    for track_name, module in TRACK_MODULES.items():
+        track_config = config.get(track_name)
+        if not track_config:
+            logger.warning("no config for track %s, skipping", track_name)
+            continue
+        try:
+            module.run(track_config)
+        except Exception:
+            logger.exception("[%s] tick failed, isolated from other tracks", track_name)
+    logger.info("=== tick end ===")
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--once", action="store_true", help="run a single tick of all tracks and exit")
+    mode.add_argument("--loop", action="store_true", help="run continuously, sleeping between ticks")
+    parser.add_argument("--interval-minutes", type=float, default=None, help="override poll interval for --loop (minutes)")
+    args = parser.parse_args()
+
+    setup_logging()
+    logger = logging.getLogger("scheduler")
+
+    if args.once:
+        run_all_once(load_config(), logger)
+        return
+
+    interval = args.interval_minutes
+    while True:
+        config = load_config()
+        run_all_once(config, logger)
+        if interval is None:
+            sleep_minutes = min(c["poll_minutes"] for c in config.values())
+        else:
+            sleep_minutes = interval
+        logger.info("sleeping %.1f minutes until next tick", sleep_minutes)
+        time.sleep(sleep_minutes * 60)
+
+
+if __name__ == "__main__":
+    main()

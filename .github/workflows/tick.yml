@@ -1,0 +1,40 @@
+name: Paper-trading tick
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: paper-trading-tick
+  cancel-in-progress: false
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - run: pip install -r requirements.txt
+
+      - run: python scheduler.py --once
+
+      - name: Commit updated ledgers
+        run: |
+          git config user.name "paper-trading-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data_store/
+          if ! git diff --cached --quiet; then
+            git commit -m "tick: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            git push
+          else
+            echo "no ledger changes this tick"
+          fi

@@ -1,0 +1,8 @@
+# data_store/ is intentionally NOT ignored: GitHub Actions commits the SQLite
+# ledgers back to the repo each tick so state persists across runner instances.
+logs/
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
