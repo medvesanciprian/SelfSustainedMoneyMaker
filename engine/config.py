@@ -24,10 +24,13 @@ def _validate_track(name: str, cfg: dict):
 
     if cfg["starting_capital"] <= 0:
         raise ValueError(f"[{name}] starting_capital must be positive, got {cfg['starting_capital']}")
-    if cfg["fee_pct"] < 0:
-        raise ValueError(f"[{name}] fee_pct must be >= 0, got {cfg['fee_pct']}")
-    if cfg["slippage_pct"] < 0:
-        raise ValueError(f"[{name}] slippage_pct must be >= 0, got {cfg['slippage_pct']}")
+    if not (0 <= cfg["fee_pct"] < 100):
+        # a fee >= 100% of notional would make proceeds negative on a SELL
+        # (paper_broker.py: proceeds = notional - fee), driving cash negative --
+        # nonsensical for a ledger that should never owe money it doesn't have.
+        raise ValueError(f"[{name}] fee_pct must be in [0, 100), got {cfg['fee_pct']}")
+    if not (0 <= cfg["slippage_pct"] < 100):
+        raise ValueError(f"[{name}] slippage_pct must be in [0, 100), got {cfg['slippage_pct']}")
     if not (0 < cfg["loss_cap_pct"] <= 100):
         raise ValueError(f"[{name}] loss_cap_pct must be in (0, 100], got {cfg['loss_cap_pct']}")
     if cfg["poll_minutes"] <= 0:

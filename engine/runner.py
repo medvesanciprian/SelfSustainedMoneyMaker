@@ -93,8 +93,17 @@ def run_tick(track_name: str, config: dict, fetch_series_fn):
         ledger.record_trade("SELL", fill.price, fill.qty, fill.fee, state.cash, equity, signal.reason)
         logger.info("[%s] SELL %.6f @ %.6f (fee %.6f) -> equity %.4f", track_name, fill.qty, fill.price, fill.fee, equity)
 
-    else:
+    elif signal.action == Action.HOLD:
         logger.info("[%s] HOLD @ %.6f (%s)", track_name, last_price, signal.reason)
+
+    else:
+        # Strategies already guard BUY-while-holding and SELL-while-not-holding,
+        # so this shouldn't be reachable -- but if it ever is, log what actually
+        # happened instead of silently mislabeling it as HOLD.
+        logger.warning(
+            "[%s] %s signal not actionable (holding_position=%s) @ %.6f (%s)",
+            track_name, signal.action.value, holding_position, last_price, signal.reason,
+        )
 
     ledger.set_state(state)
     ledger.record_equity(last_price, equity_of(state, last_price))

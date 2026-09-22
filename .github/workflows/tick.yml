@@ -18,6 +18,13 @@ concurrency:
 jobs:
   tick:
     runs-on: ubuntu-latest
+    # Belt-and-suspenders bound on total job duration. Individual network calls
+    # already have their own timeouts (ccxt/yfinance default to 10s, Polymarket
+    # calls use an explicit 15s), but this protects against anything else that
+    # could stall (pip install, an infinite loop, an unforeseen hang) -- without
+    # it, a stuck run would sit for up to GitHub's 6h default AND, because of the
+    # concurrency group below, block every subsequent scheduled tick behind it.
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
