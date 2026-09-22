@@ -1,5 +1,8 @@
 name: Paper-trading tick
 
+# Re-touched to re-register the cron schedule with GitHub's scheduler
+# (schedule triggers sometimes don't activate until the workflow file
+# gets a fresh push after creation).
 on:
   schedule:
     - cron: "*/15 * * * *"
