@@ -35,9 +35,22 @@ jobs:
           git config user.name "paper-trading-bot"
           git config user.email "actions@users.noreply.github.com"
           git add data_store/
-          if ! git diff --cached --quiet; then
-            git commit -m "tick: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-            git push
-          else
+          if git diff --cached --quiet; then
             echo "no ledger changes this tick"
+            exit 0
           fi
+          git commit -m "tick: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+
+          # main may have moved since checkout (e.g. a manual push landed while
+          # this run was installing deps / fetching data) -- retry with rebase
+          # instead of letting the whole tick's data get dropped on a bare push failure.
+          for attempt in 1 2 3 4 5; do
+            if git push; then
+              exit 0
+            fi
+            echo "push rejected (attempt $attempt), fetching and rebasing"
+            git fetch origin main
+            git rebase origin/main
+          done
+          echo "push failed after 5 attempts" >&2
+          exit 1
