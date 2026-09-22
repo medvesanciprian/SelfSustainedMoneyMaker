@@ -21,13 +21,16 @@ def run_tick(track_name: str, config: dict, fetch_series_fn):
     """fetch_series_fn() -> (series: list[float], last_price: float).
     Isolated per track: exceptions are caught by the caller (scheduler)."""
 
-    starting_capital = config["starting_capital"]
     fee_pct = config["fee_pct"]
     slippage_pct = config["slippage_pct"]
     loss_cap_pct = config["loss_cap_pct"]
 
-    ledger = Ledger(track_name, starting_capital)
+    # config["starting_capital"] only seeds a brand-new ledger; once created, the
+    # ledger's own persisted starting_capital is authoritative (see engine/ledger.py)
+    # so risk math never silently drifts if the config file is edited later.
+    ledger = Ledger(track_name, config["starting_capital"])
     state = ledger.get_state()
+    starting_capital = state.starting_capital
 
     if state.stopped:
         logger.info("[%s] track is stopped (loss cap previously triggered); skipping", track_name)
@@ -49,7 +52,13 @@ def run_tick(track_name: str, config: dict, fetch_series_fn):
     holding_position = state.position_qty > 0
     signal = strategy.decide(series, holding_position)
 
-    if signal.action == Action.BUY and not holding_position:
+    if signal.action == Action.BUY and not holding_position and last_price <= 0:
+        # A zero/negative price is nonsensical to buy at, and would divide-by-zero
+        # in the sizing below. Real case: a Polymarket outcome can legitimately
+        # price at exactly 0 near resolution.
+        logger.warning("[%s] BUY signal ignored: non-positive last_price %.6f", track_name, last_price)
+
+    elif signal.action == Action.BUY and not holding_position:
         # Size against the price we'll actually pay (post-slippage, pre-fee), then
         # fee is layered on top of that notional -- sizing off last_price directly
         # would make cost > cash by construction and the order would never fill.

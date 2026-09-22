@@ -49,8 +49,11 @@ def main():
     plt.figure(figsize=(10, 6))
 
     for track_name, track_config in config.items():
-        starting_capital = track_config["starting_capital"]
-        ledger = Ledger(track_name, starting_capital)
+        # track_config["starting_capital"] only seeds a brand-new ledger; the
+        # ledger's own persisted value is authoritative once a track exists,
+        # so return% stays correct even if the config file is edited later.
+        ledger = Ledger(track_name, track_config["starting_capital"])
+        starting_capital = ledger.get_state().starting_capital
         curve = ledger.equity_curve()
         trades = ledger.trades()
         ledger.close()

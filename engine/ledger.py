@@ -14,10 +14,16 @@ class State:
     position_qty: float
     position_avg_price: float
     stopped: bool
+    starting_capital: float
 
 
 class Ledger:
     def __init__(self, track_name: str, starting_capital: float):
+        """starting_capital is only used to seed a track the first time it's ever
+        created. Once persisted, it's immutable -- later Ledger(...) calls with a
+        different value (e.g. because config/tracks.yaml was edited) do NOT change
+        it, since the loss-cap floor and return% math must stay anchored to what
+        the track actually started with, not to whatever the config currently says."""
         DATA_STORE.mkdir(exist_ok=True)
         self.track_name = track_name
         self.db_path = DATA_STORE / f"{track_name}.db"
@@ -28,9 +34,15 @@ class Ledger:
                 cash REAL NOT NULL,
                 position_qty REAL NOT NULL,
                 position_avg_price REAL NOT NULL,
-                stopped INTEGER NOT NULL
+                stopped INTEGER NOT NULL,
+                starting_capital REAL NOT NULL DEFAULT 0
             )"""
         )
+        # migrate ledgers created before starting_capital existed as a column
+        columns = [row[1] for row in self._conn.execute("PRAGMA table_info(state)").fetchall()]
+        if "starting_capital" not in columns:
+            self._conn.execute("ALTER TABLE state ADD COLUMN starting_capital REAL NOT NULL DEFAULT 0")
+            self._conn.execute("UPDATE state SET starting_capital = cash WHERE starting_capital = 0 AND position_qty = 0")
         self._conn.execute(
             """CREATE TABLE IF NOT EXISTS trades (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -54,21 +66,22 @@ class Ledger:
         )
         self._conn.commit()
 
-        row = self._conn.execute("SELECT cash, position_qty, position_avg_price, stopped FROM state WHERE id = 1").fetchone()
+        row = self._conn.execute("SELECT cash FROM state WHERE id = 1").fetchone()
         if row is None:
             self._conn.execute(
-                "INSERT INTO state (id, cash, position_qty, position_avg_price, stopped) VALUES (1, ?, 0, 0, 0)",
-                (starting_capital,),
+                "INSERT INTO state (id, cash, position_qty, position_avg_price, stopped, starting_capital) VALUES (1, ?, 0, 0, 0, ?)",
+                (starting_capital, starting_capital),
             )
             self._conn.commit()
 
     def get_state(self) -> State:
         row = self._conn.execute(
-            "SELECT cash, position_qty, position_avg_price, stopped FROM state WHERE id = 1"
+            "SELECT cash, position_qty, position_avg_price, stopped, starting_capital FROM state WHERE id = 1"
         ).fetchone()
-        return State(cash=row[0], position_qty=row[1], position_avg_price=row[2], stopped=bool(row[3]))
+        return State(cash=row[0], position_qty=row[1], position_avg_price=row[2], stopped=bool(row[3]), starting_capital=row[4])
 
     def set_state(self, state: State):
+        # starting_capital is intentionally not updated here -- it's immutable after creation.
         self._conn.execute(
             "UPDATE state SET cash = ?, position_qty = ?, position_avg_price = ?, stopped = ? WHERE id = 1",
             (state.cash, state.position_qty, state.position_avg_price, int(state.stopped)),
