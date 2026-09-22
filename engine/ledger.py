@@ -38,7 +38,12 @@ class Ledger:
                 starting_capital REAL NOT NULL DEFAULT 0
             )"""
         )
-        # migrate ledgers created before starting_capital existed as a column
+        # migrate ledgers created before starting_capital existed as a column.
+        # Heuristic backfill (starting_capital = cash) is only correct for a track
+        # that hadn't traded yet at migration time -- verified true for all 4 real
+        # ledgers when this ran. It would under-backfill (leave 0, disabling the
+        # loss cap) for a track already holding a position pre-migration; not a
+        # live concern since the migration has already run against production.
         columns = [row[1] for row in self._conn.execute("PRAGMA table_info(state)").fetchall()]
         if "starting_capital" not in columns:
             self._conn.execute("ALTER TABLE state ADD COLUMN starting_capital REAL NOT NULL DEFAULT 0")
