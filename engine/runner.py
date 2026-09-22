@@ -50,16 +50,28 @@ def run_tick(track_name: str, config: dict, fetch_series_fn):
     signal = strategy.decide(series, holding_position)
 
     if signal.action == Action.BUY and not holding_position:
-        qty = state.cash / last_price
+        # Size against the price we'll actually pay (post-slippage, pre-fee), then
+        # fee is layered on top of that notional -- sizing off last_price directly
+        # would make cost > cash by construction and the order would never fill.
+        est_fill_price = last_price * (1 + slippage_pct / 100.0)
+        qty = state.cash / (est_fill_price * (1 + fee_pct / 100.0))
         fill = simulate_fill("BUY", last_price, qty, fee_pct, slippage_pct)
         cost = fill.price * fill.qty + fill.fee
-        if cost <= state.cash:
+        if cost > state.cash:
+            # floating-point safety margin only; should not trigger given the sizing above
+            qty *= state.cash / cost
+            fill = simulate_fill("BUY", last_price, qty, fee_pct, slippage_pct)
+            cost = fill.price * fill.qty + fill.fee
+
+        if cost <= state.cash and fill.qty > 0:
             state.cash -= cost
             state.position_qty = fill.qty
             state.position_avg_price = fill.price
             equity = equity_of(state, last_price)
             ledger.record_trade("BUY", fill.price, fill.qty, fill.fee, state.cash, equity, signal.reason)
             logger.info("[%s] BUY %.6f @ %.6f (fee %.6f) -> equity %.4f", track_name, fill.qty, fill.price, fill.fee, equity)
+        else:
+            logger.warning("[%s] BUY signal fired but order could not be sized affordably (cash=%.6f, cost=%.6f)", track_name, state.cash, cost)
 
     elif signal.action == Action.SELL and holding_position:
         qty = state.position_qty

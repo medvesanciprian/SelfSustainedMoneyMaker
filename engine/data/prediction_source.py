@@ -41,17 +41,28 @@ def _history_path(track_name: str) -> Path:
 def fetch_series(track_name: str, condition_id: str = None, history_len: int = 60):
     """Returns (series, last_price, condition_id). condition_id is resolved once
     and should be persisted by the caller (e.g. in tracks.yaml or a state file) to
-    keep tracking the same market across ticks."""
+    keep tracking the same market across ticks -- unless that market has since
+    closed/resolved, in which case a new active market is picked and the price
+    history is reset (a resolved market's implied probability isn't comparable
+    to a freshly-picked one)."""
     if not condition_id:
         condition_id = pick_active_market()
 
     resp = requests.get(GAMMA_MARKETS_URL, params={"condition_ids": condition_id}, timeout=15)
     resp.raise_for_status()
     markets = resp.json()
-    if not markets:
-        raise RuntimeError(f"Market {condition_id} not found")
+    market = markets[0] if markets else None
 
-    market = markets[0]
+    if market is None or market.get("closed"):
+        condition_id = pick_active_market()
+        resp = requests.get(GAMMA_MARKETS_URL, params={"condition_ids": condition_id}, timeout=15)
+        resp.raise_for_status()
+        markets = resp.json()
+        if not markets:
+            raise RuntimeError(f"Newly picked market {condition_id} not found")
+        market = markets[0]
+        _history_path(track_name).unlink(missing_ok=True)
+
     prices = market.get("outcomePrices")
     if isinstance(prices, str):
         prices = json.loads(prices)
