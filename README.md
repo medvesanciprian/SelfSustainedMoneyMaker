@@ -54,6 +54,15 @@ python scoreboard.py
 Prints a comparison table (return %, max drawdown, trade count, win rate) and
 writes `logs/equity_curve.png` with all four equity curves overlaid.
 
+```bash
+python trade_log.py
+```
+
+Prints every trade ever made, across all four tracks, in chronological order,
+with the strategy's reasoning for each one (e.g. `RSI(14)=28.4 < oversold
+threshold 30`). This is permanent history -- pulled from the same SQLite
+ledgers that get committed to the repo every tick, not from ephemeral logs.
+
 ## Config
 
 `config/tracks.yaml` holds per-track symbol, fee/slippage assumptions, poll
